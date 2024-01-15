@@ -1,0 +1,8 @@
+-- migration 0007
+BEGIN;
+CREATE TABLE payouts (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMIT;

@@ -1,0 +1,4 @@
+-- migration 0126
+BEGIN;
+ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS risk_band TEXT;
+COMMIT;

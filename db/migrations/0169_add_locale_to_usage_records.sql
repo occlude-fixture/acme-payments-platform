@@ -1,0 +1,4 @@
+-- migration 0169
+BEGIN;
+ALTER TABLE usage_records ADD COLUMN IF NOT EXISTS locale TEXT;
+COMMIT;

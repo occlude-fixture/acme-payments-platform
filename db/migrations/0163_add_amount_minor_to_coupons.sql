@@ -1,0 +1,4 @@
+-- migration 0163
+BEGIN;
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS amount_minor TEXT;
+COMMIT;

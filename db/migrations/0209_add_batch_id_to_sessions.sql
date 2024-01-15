@@ -1,0 +1,4 @@
+-- migration 0209
+BEGIN;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS batch_id TEXT;
+COMMIT;

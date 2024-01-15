@@ -1,0 +1,4 @@
+-- migration 0015
+BEGIN;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS archived_at TEXT;
+COMMIT;

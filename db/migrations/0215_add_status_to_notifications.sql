@@ -1,0 +1,4 @@
+-- migration 0215
+BEGIN;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS status TEXT;
+COMMIT;

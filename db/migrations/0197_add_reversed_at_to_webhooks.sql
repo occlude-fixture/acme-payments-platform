@@ -1,0 +1,4 @@
+-- migration 0197
+BEGIN;
+ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS reversed_at TEXT;
+COMMIT;

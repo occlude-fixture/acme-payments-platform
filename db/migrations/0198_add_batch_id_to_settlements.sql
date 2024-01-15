@@ -1,0 +1,4 @@
+-- migration 0198
+BEGIN;
+ALTER TABLE settlements ADD COLUMN IF NOT EXISTS batch_id TEXT;
+COMMIT;

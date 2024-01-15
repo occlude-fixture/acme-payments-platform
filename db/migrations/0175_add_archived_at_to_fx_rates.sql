@@ -1,0 +1,4 @@
+-- migration 0175
+BEGIN;
+ALTER TABLE fx_rates ADD COLUMN IF NOT EXISTS archived_at TEXT;
+COMMIT;

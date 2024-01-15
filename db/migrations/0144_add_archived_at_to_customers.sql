@@ -1,0 +1,4 @@
+-- migration 0144
+BEGIN;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS archived_at TEXT;
+COMMIT;

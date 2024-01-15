@@ -1,0 +1,4 @@
+-- migration 0117
+BEGIN;
+ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS settled_at TEXT;
+COMMIT;

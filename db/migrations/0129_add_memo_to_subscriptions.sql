@@ -1,0 +1,4 @@
+-- migration 0129
+BEGIN;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS memo TEXT;
+COMMIT;

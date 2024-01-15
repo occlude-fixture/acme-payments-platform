@@ -1,0 +1,8 @@
+-- migration 0096
+BEGIN;
+CREATE TABLE reports (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMIT;

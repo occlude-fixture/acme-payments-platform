@@ -1,0 +1,4 @@
+-- migration 0124
+BEGIN;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS priority TEXT;
+COMMIT;

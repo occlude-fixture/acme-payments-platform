@@ -1,0 +1,4 @@
+-- migration 0048
+BEGIN;
+ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS version TEXT;
+COMMIT;

@@ -1,0 +1,4 @@
+-- migration 0146
+BEGIN;
+ALTER TABLE exports ADD COLUMN IF NOT EXISTS risk_band TEXT;
+COMMIT;

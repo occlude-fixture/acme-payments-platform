@@ -1,0 +1,4 @@
+-- migration 0066
+BEGIN;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS risk_band TEXT;
+COMMIT;

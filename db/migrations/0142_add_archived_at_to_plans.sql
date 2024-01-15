@@ -1,0 +1,4 @@
+-- migration 0142
+BEGIN;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS archived_at TEXT;
+COMMIT;

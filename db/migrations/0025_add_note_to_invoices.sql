@@ -1,0 +1,4 @@
+-- migration 0025
+BEGIN;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS note TEXT;
+COMMIT;

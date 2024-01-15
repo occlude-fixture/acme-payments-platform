@@ -1,0 +1,4 @@
+-- migration 0221
+BEGIN;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS locale TEXT;
+COMMIT;

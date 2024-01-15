@@ -1,0 +1,4 @@
+-- migration 0186
+BEGIN;
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS version TEXT;
+COMMIT;

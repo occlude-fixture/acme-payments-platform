@@ -1,0 +1,4 @@
+-- migration 0088
+BEGIN;
+ALTER TABLE statements ADD COLUMN IF NOT EXISTS version TEXT;
+COMMIT;

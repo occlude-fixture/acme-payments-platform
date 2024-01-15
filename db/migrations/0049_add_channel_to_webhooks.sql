@@ -1,0 +1,4 @@
+-- migration 0049
+BEGIN;
+ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS channel TEXT;
+COMMIT;

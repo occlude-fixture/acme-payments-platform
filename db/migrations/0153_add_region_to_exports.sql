@@ -1,0 +1,4 @@
+-- migration 0153
+BEGIN;
+ALTER TABLE exports ADD COLUMN IF NOT EXISTS region TEXT;
+COMMIT;

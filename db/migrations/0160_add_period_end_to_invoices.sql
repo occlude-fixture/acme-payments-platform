@@ -1,0 +1,4 @@
+-- migration 0160
+BEGIN;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS period_end TEXT;
+COMMIT;

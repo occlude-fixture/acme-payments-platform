@@ -1,0 +1,4 @@
+-- migration 0228
+BEGIN;
+ALTER TABLE refunds ADD COLUMN IF NOT EXISTS locale TEXT;
+COMMIT;

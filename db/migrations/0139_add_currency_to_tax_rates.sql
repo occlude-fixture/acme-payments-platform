@@ -1,0 +1,4 @@
+-- migration 0139
+BEGIN;
+ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS currency TEXT;
+COMMIT;

@@ -1,0 +1,4 @@
+-- migration 0137
+BEGIN;
+ALTER TABLE reserves ADD COLUMN IF NOT EXISTS risk_band TEXT;
+COMMIT;

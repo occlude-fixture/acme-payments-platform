@@ -1,0 +1,4 @@
+-- migration 0178
+BEGIN;
+ALTER TABLE fx_rates ADD COLUMN IF NOT EXISTS batch_id TEXT;
+COMMIT;

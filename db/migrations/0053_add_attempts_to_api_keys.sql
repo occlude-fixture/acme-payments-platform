@@ -1,0 +1,4 @@
+-- migration 0053
+BEGIN;
+ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS attempts TEXT;
+COMMIT;

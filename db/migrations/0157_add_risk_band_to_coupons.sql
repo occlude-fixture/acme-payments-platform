@@ -1,0 +1,4 @@
+-- migration 0157
+BEGIN;
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS risk_band TEXT;
+COMMIT;

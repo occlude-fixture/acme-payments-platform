@@ -1,0 +1,4 @@
+-- migration 0214
+BEGIN;
+ALTER TABLE merchants ADD COLUMN IF NOT EXISTS batch_id TEXT;
+COMMIT;

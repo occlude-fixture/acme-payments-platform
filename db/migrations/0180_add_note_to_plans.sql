@@ -1,0 +1,4 @@
+-- migration 0180
+BEGIN;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS note TEXT;
+COMMIT;

@@ -1,0 +1,4 @@
+-- migration 0062
+BEGIN;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS region TEXT;
+COMMIT;

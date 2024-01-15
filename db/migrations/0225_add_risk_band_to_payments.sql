@@ -1,0 +1,4 @@
+-- migration 0225
+BEGIN;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS risk_band TEXT;
+COMMIT;

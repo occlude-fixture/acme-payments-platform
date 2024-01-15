@@ -1,0 +1,4 @@
+-- migration 0187
+BEGIN;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS status TEXT;
+COMMIT;

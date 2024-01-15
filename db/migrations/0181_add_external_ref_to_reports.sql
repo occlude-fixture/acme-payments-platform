@@ -1,0 +1,4 @@
+-- migration 0181
+BEGIN;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS external_ref TEXT;
+COMMIT;

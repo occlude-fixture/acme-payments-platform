@@ -1,0 +1,4 @@
+-- migration 0199
+BEGIN;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS risk_band TEXT;
+COMMIT;

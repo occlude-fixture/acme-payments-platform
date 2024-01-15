@@ -1,0 +1,4 @@
+-- migration 0188
+BEGIN;
+ALTER TABLE merchants ADD COLUMN IF NOT EXISTS channel TEXT;
+COMMIT;

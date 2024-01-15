@@ -1,0 +1,4 @@
+-- migration 0218
+BEGIN;
+ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS owner_id TEXT;
+COMMIT;

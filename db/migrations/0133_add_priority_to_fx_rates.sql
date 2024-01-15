@@ -1,0 +1,4 @@
+-- migration 0133
+BEGIN;
+ALTER TABLE fx_rates ADD COLUMN IF NOT EXISTS priority TEXT;
+COMMIT;
