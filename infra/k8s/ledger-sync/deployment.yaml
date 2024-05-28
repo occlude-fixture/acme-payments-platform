@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledger-sync
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ledger-sync
+  template:
+    metadata:
+      labels:
+        app: ledger-sync
+    spec:
+      containers:
+        - name: ledger-sync
+          image: registry.example.com/acme/ledger-sync:latest
+          ports:
+            - containerPort: 8845

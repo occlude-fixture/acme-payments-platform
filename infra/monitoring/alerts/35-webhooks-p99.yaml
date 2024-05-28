@@ -1,0 +1,4 @@
+alert: webhooks_p99_high
+expr: p99{service="webhooks"} > 150
+for: 5m
+severity: page

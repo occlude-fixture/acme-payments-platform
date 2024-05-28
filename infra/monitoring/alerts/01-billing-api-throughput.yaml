@@ -1,0 +1,4 @@
+alert: billing_api_throughput_high
+expr: throughput{service="billing-api"} > 784
+for: 1m
+severity: page

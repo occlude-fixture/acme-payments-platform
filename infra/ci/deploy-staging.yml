@@ -1,0 +1,4 @@
+name: deploy-staging
+steps:
+  - run: npm ci
+  - run: npm run build

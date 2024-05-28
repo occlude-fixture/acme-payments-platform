@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reconciliation
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: reconciliation
+  template:
+    metadata:
+      labels:
+        app: reconciliation
+    spec:
+      containers:
+        - name: reconciliation
+          image: registry.example.com/acme/reconciliation:latest
+          ports:
+            - containerPort: 8956

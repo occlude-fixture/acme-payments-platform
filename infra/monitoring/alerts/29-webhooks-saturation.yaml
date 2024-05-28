@@ -1,0 +1,4 @@
+alert: webhooks_saturation_high
+expr: saturation{service="webhooks"} > 63
+for: 7m
+severity: ticket

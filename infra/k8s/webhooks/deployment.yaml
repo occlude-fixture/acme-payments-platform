@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhooks
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: webhooks
+  template:
+    metadata:
+      labels:
+        app: webhooks
+    spec:
+      containers:
+        - name: webhooks
+          image: registry.example.com/acme/webhooks:latest
+          ports:
+            - containerPort: 8511

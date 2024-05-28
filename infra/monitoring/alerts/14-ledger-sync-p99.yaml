@@ -1,0 +1,4 @@
+alert: ledger_sync_p99_high
+expr: p99{service="ledger-sync"} > 62
+for: 10m
+severity: ticket

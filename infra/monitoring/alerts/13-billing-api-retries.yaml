@@ -1,0 +1,4 @@
+alert: billing_api_retries_high
+expr: retries{service="billing-api"} > 195
+for: 3m
+severity: page

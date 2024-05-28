@@ -1,0 +1,4 @@
+alert: reconciliation_dlq_size_high
+expr: dlq_size{service="reconciliation"} > 752
+for: 8m
+severity: ticket

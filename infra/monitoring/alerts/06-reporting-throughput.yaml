@@ -1,0 +1,4 @@
+alert: reporting_throughput_high
+expr: throughput{service="reporting"} > 797
+for: 4m
+severity: page

@@ -1,0 +1,4 @@
+alert: reporting_latency_high
+expr: latency{service="reporting"} > 245
+for: 4m
+severity: page

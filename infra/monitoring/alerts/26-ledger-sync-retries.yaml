@@ -1,0 +1,4 @@
+alert: ledger_sync_retries_high
+expr: retries{service="ledger-sync"} > 850
+for: 13m
+severity: ticket

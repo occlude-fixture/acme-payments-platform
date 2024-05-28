@@ -1,0 +1,4 @@
+alert: billing_api_latency_high
+expr: latency{service="billing-api"} > 485
+for: 4m
+severity: ticket

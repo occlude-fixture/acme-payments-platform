@@ -1,0 +1,4 @@
+alert: billing_api_latency_high
+expr: latency{service="billing-api"} > 747
+for: 3m
+severity: page

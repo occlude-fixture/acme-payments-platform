@@ -1,0 +1,4 @@
+alert: webhooks_errors_high
+expr: errors{service="webhooks"} > 248
+for: 1m
+severity: page

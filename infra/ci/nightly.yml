@@ -1,0 +1,4 @@
+name: nightly
+steps:
+  - run: npm ci
+  - run: npm run test

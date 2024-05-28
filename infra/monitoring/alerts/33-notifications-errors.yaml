@@ -1,0 +1,4 @@
+alert: notifications_errors_high
+expr: errors{service="notifications"} > 683
+for: 6m
+severity: ticket

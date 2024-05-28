@@ -1,0 +1,4 @@
+alert: reporting_errors_high
+expr: errors{service="reporting"} > 236
+for: 3m
+severity: ticket

@@ -1,0 +1,4 @@
+alert: ledger_sync_throughput_high
+expr: throughput{service="ledger-sync"} > 601
+for: 4m
+severity: page

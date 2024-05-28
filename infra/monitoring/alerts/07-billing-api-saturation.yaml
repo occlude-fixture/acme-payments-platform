@@ -1,0 +1,4 @@
+alert: billing_api_saturation_high
+expr: saturation{service="billing-api"} > 103
+for: 5m
+severity: page

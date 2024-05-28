@@ -1,0 +1,4 @@
+alert: reconciliation_retries_high
+expr: retries{service="reconciliation"} > 558
+for: 10m
+severity: page

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: reporting
+  template:
+    metadata:
+      labels:
+        app: reporting
+    spec:
+      containers:
+        - name: reporting
+          image: registry.example.com/acme/reporting:latest
+          ports:
+            - containerPort: 8769

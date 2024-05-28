@@ -1,0 +1,4 @@
+name: deploy-prod
+steps:
+  - run: npm ci
+  - run: npm run build

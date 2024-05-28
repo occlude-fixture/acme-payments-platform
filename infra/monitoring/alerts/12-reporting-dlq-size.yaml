@@ -1,0 +1,4 @@
+alert: reporting_dlq_size_high
+expr: dlq_size{service="reporting"} > 246
+for: 8m
+severity: page

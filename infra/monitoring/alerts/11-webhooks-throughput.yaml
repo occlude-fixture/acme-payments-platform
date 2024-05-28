@@ -1,0 +1,4 @@
+alert: webhooks_throughput_high
+expr: throughput{service="webhooks"} > 386
+for: 11m
+severity: page

@@ -1,0 +1,4 @@
+alert: reconciliation_queue_depth_high
+expr: queue_depth{service="reconciliation"} > 93
+for: 11m
+severity: ticket

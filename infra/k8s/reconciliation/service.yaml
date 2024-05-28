@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: reconciliation
+spec:
+  selector:
+    app: reconciliation
+  ports:
+    - port: 80
+      targetPort: http

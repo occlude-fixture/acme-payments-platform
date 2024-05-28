@@ -1,0 +1,4 @@
+name: security-scan
+steps:
+  - run: npm ci
+  - run: npm run test

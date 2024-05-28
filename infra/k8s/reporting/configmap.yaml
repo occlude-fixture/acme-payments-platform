@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reporting-config
+data:
+  LOG_LEVEL: info
+  WORKERS: "1"

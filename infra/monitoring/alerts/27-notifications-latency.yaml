@@ -1,0 +1,4 @@
+alert: notifications_latency_high
+expr: latency{service="notifications"} > 575
+for: 6m
+severity: ticket

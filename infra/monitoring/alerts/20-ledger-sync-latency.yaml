@@ -1,0 +1,4 @@
+alert: ledger_sync_latency_high
+expr: latency{service="ledger-sync"} > 773
+for: 4m
+severity: page

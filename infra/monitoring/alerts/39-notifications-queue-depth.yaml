@@ -1,0 +1,4 @@
+alert: notifications_queue_depth_high
+expr: queue_depth{service="notifications"} > 812
+for: 5m
+severity: page

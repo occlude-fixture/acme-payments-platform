@@ -1,0 +1,4 @@
+alert: reporting_latency_high
+expr: latency{service="reporting"} > 707
+for: 2m
+severity: ticket

@@ -1,0 +1,4 @@
+alert: reconciliation_latency_high
+expr: latency{service="reconciliation"} > 147
+for: 3m
+severity: page

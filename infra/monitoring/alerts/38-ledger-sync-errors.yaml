@@ -1,0 +1,4 @@
+alert: ledger_sync_errors_high
+expr: errors{service="ledger-sync"} > 159
+for: 4m
+severity: ticket

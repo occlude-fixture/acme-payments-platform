@@ -1,0 +1,4 @@
+alert: notifications_dlq_size_high
+expr: dlq_size{service="notifications"} > 774
+for: 14m
+severity: page

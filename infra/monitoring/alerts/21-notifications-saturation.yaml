@@ -1,0 +1,4 @@
+alert: notifications_saturation_high
+expr: saturation{service="notifications"} > 114
+for: 10m
+severity: page

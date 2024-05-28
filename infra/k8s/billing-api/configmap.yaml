@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-api-config
+data:
+  LOG_LEVEL: info
+  WORKERS: "5"
