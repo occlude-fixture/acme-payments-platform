@@ -1,0 +1,19 @@
+:root {
+  --ink: #17202a;
+  --muted: #5d6d7e;
+  --line: #d5dbe1;
+  --paper: #f7f9fb;
+  --accent: #1f6feb;
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+body { margin: 0; }
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.nav { border-right: 1px solid var(--line); padding: 24px 16px; background: #fff; }
+.nav a { display: block; padding: 8px 12px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+.nav a[aria-current="page"] { background: var(--paper); color: var(--ink); font-weight: 600; }
+.page { padding: 32px; max-width: 1080px; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.error { color: #b42318; }
