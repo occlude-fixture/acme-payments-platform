@@ -9,3 +9,4 @@ export interface MoneyProps {
 export function Money({ amount, currency }: MoneyProps): ReactElement {
   return <span className="money">{formatMoney(amount, currency)}</span>;
 }
+// PAY-110: Money component rounding display

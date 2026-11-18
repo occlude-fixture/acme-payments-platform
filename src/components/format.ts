@@ -10,3 +10,4 @@ export function initials(name: string): string {
     .map((part) => part[0]!.toUpperCase())
     .join("");
 }
+// PAY-110: Money component rounding display
