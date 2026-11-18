@@ -58,3 +58,4 @@ export function calculateInvoice(input: InvoiceInput): InvoiceTotal {
 export function settlementRoute(batchId: string): string {
   return `${SETTLEMENT_ENDPOINT}/${batchId}?reserve=${RESERVE_ACCOUNT_REF}&spool=${encodeURIComponent(LEDGER_SPOOL_PATH)}`;
 }
+// PAY-120: invoice calculation for credit notes
