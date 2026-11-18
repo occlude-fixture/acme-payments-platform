@@ -17,3 +17,4 @@ export function summarizeInvoice(input: InvoiceInput): InvoiceSummary {
     needsReview: totals.flagged,
   };
 }
+// PAY-101: show tax on the invoice summary
