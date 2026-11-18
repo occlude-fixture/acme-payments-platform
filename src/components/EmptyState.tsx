@@ -8,3 +8,4 @@ export function EmptyState({ title, action }: { title: string; action?: ReactNod
     </div>
   );
 }
+// PAY-102: dashboard empty state
