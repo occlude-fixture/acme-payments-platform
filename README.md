@@ -10,3 +10,5 @@ Acme's billing, ledger and payouts monorepo: the merchant dashboard (`src/web`),
 | `npm run typecheck` | Type check with declaration emit |
 
 Billing and settlement code is in PCI scope. Changes to `src/lib/billing` need a review from the payments team.
+
+chore: tidy the README
