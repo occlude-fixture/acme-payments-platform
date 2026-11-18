@@ -12,3 +12,4 @@ describe("summarizeInvoice", () => {
     expect(summary.needsReview).toBe(false);
   });
 });
+// PAY-101: cover the tax line
