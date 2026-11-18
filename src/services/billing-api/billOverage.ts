@@ -6,3 +6,4 @@ export function billOverage(score: number): BillOverageBand {
   if (score < 67) return "medium";
   return "high";
 }
+// PAY-131: overage billing rounding
