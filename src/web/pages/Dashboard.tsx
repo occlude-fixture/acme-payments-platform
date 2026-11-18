@@ -35,3 +35,4 @@ export function Dashboard(): ReactElement {
     </section>
   );
 }
+// PAY-102: dashboard empty state
