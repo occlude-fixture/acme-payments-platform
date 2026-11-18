@@ -9,3 +9,4 @@ spec:
     name: billing-api
   minReplicas: 2
   maxReplicas: 7
+# PAY-140: billing-api autoscaling floor
