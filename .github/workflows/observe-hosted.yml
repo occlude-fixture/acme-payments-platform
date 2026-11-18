@@ -1,0 +1,182 @@
+name: observe-hosted
+# Runs the Observation recorder pre-release on GitHub-hosted runners: every
+# runner image and recorder pair, posting to a sink on the runner itself, and
+# the leak check on two large public trees. Started by hand only.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: observe-hosted
+  cancel-in-progress: false
+
+jobs:
+  record:
+    name: record ${{ matrix.runner }} ${{ matrix.recorder }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-26.04, ubuntu-24.04-arm]
+        recorder: [fanotify, ptrace]
+    env:
+      RUNNER_LABEL: ${{ matrix.runner }}
+      RECORDER: ${{ matrix.recorder }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Runner facts
+        run: |
+          d="$RUNNER_TEMP/observe-hosted"; mkdir -p "$d"
+          {
+            echo "runner $RUNNER_LABEL recorder $RECORDER"
+            echo "image ${ImageOS:-unknown} ${ImageVersion:-unknown} arch $RUNNER_ARCH"
+            echo "kernel $(uname -srm)"
+            echo "os $(. /etc/os-release && echo "$PRETTY_NAME")"
+            echo "node $(node -v) npm $(npm -v)"
+            echo "temp mount $(findmnt -no TARGET,FSTYPE,OPTIONS -T "$RUNNER_TEMP")"
+            echo "setcap $(command -v setcap || echo absent)"
+            echo "sudo -n $(sudo -n true 2>/dev/null && echo yes || echo no)"
+            echo "fanotify config $(grep -h '^CONFIG_FANOTIFY=' "/boot/config-$(uname -r)" 2>/dev/null || echo unknown)"
+            echo "yama ptrace_scope $(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo n/a)"
+          } | tee "$d/runner.txt"
+
+      - run: npm ci
+
+      - name: strace, as the Action's README says
+        if: matrix.recorder == 'ptrace'
+        run: |
+          sudo apt-get install -y strace
+          echo "strace $(strace -V | head -1)" | tee -a "$RUNNER_TEMP/observe-hosted/runner.txt"
+
+      - name: Local payload sink (no Occlude address in this run)
+        run: |
+          d="$RUNNER_TEMP/observe-hosted"
+          # A run id shaped like Occlude's (a random UUID); the runner label
+          # stays out of it, since this file is part of the checkout.
+          echo "OBSERVE_RUN_ID=$(cat /proc/sys/kernel/random/uuid)" >> "$GITHUB_ENV"
+          token=$(openssl rand -hex 24)
+          echo "::add-mask::$token"
+          echo "OCCLUDE_RUN_TOKEN=$token" >> "$GITHUB_ENV"
+          cat > "$d/sink.py" <<'PY'
+          import http.server, os, sys
+          out = sys.argv[1]
+          want = "Bearer " + os.environ["OCCLUDE_RUN_TOKEN"]
+          class H(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  body = self.rfile.read(int(self.headers.get("content-length", "0")))
+                  ok = self.headers.get("authorization") == want
+                  with open(os.path.join(out, "posted.json"), "wb") as f:
+                      f.write(body)
+                  with open(os.path.join(out, "posted.txt"), "w") as f:
+                      f.write("path %s\nauthorization %s\nbytes %d\n" % (self.path, "matches" if ok else "DIFFERS", len(body)))
+                  self.send_response(201 if ok else 401)
+                  self.send_header("content-type", "application/json")
+                  self.end_headers()
+                  self.wfile.write(b'{"ok":true}' if ok else b'{"error":"authorization"}')
+              def log_message(self, *a):
+                  pass
+          http.server.HTTPServer(("127.0.0.1", 8787), H).serve_forever()
+          PY
+          OCCLUDE_RUN_TOKEN="$token" nohup python3 "$d/sink.py" "$d" >"$d/sink.log" 2>&1 &
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            curl -s -o /dev/null http://127.0.0.1:8787/ && break || sleep 1
+          done
+
+      - name: Observation recorder v0.0.0-rc.1
+        id: observe
+        continue-on-error: true
+        uses: occlude-dev/observe-action@53402444b7e3748836ebd64697b569244e2c4f56 # v0.0.0-rc.1
+        with:
+          run-id: ${{ env.OBSERVE_RUN_ID }}
+          cloud-url: http://127.0.0.1:8787
+          recorder: ${{ matrix.recorder }}
+
+      - name: Collect
+        if: always()
+        env:
+          OUTCOME: ${{ steps.observe.outcome }}
+        run: |
+          d="$RUNNER_TEMP/observe-hosted"
+          echo "run id $OBSERVE_RUN_ID action $OUTCOME" | tee -a "$d/runner.txt"
+          p="$RUNNER_TEMP/occlude-observe-payload.json"
+          if [ -f "$p" ]; then cp "$p" "$d/payload.json"; else echo "payload none" | tee -a "$d/runner.txt"; fi
+          if [ -f "$d/posted.json" ] && [ -f "$d/payload.json" ]; then
+            if cmp -s "$d/posted.json" "$d/payload.json"; then echo "posted equals the checked payload"; else echo "posted DIFFERS from the checked payload"; fi | tee -a "$d/runner.txt"
+          fi
+          [ ! -f "$d/posted.txt" ] || tee -a "$d/runner.txt" < "$d/posted.txt"
+          rm -f "$d/sink.py"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: record-${{ matrix.runner }}-${{ matrix.recorder }}
+          path: ${{ runner.temp }}/observe-hosted/
+          retention-days: 30
+
+      - name: Result
+        if: always()
+        env:
+          OUTCOME: ${{ steps.observe.outcome }}
+        run: test "$OUTCOME" = success
+
+  large-trees:
+    name: leak check on large trees, before and after per-value judging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Fetch and verify observe and leakcheck (linux-amd64, v0.0.0-rc.1)
+        run: |
+          d="$RUNNER_TEMP/bin"; mkdir -p "$d"
+          base=https://github.com/occlude-dev/observe-action/releases/download/v0.0.0-rc.1
+          curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$d/observe" "$base/observe-linux-amd64"
+          curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$d/leakcheck" "$base/leakcheck-linux-amd64"
+          printf '%s  %s\n' \
+            61c0b5b5aef7b8563c9c7d7e9165000d13734b25e9d54210684f86044ce926df "$d/observe" \
+            a2de88799e89bf132df3816cef9a36123afae0696936b0125fc4d0ebf084de71 "$d/leakcheck" | sha256sum -c -
+          chmod 0755 "$d/observe" "$d/leakcheck"
+          command -v /usr/bin/time >/dev/null || sudo apt-get install -y time
+
+      # Before: the payload inside a directory is judged line by line, which is
+      # the judgement before per-value checking (same index, same line check).
+      # After: the payload file itself, judged per value. No install, no
+      # script of either repository is run.
+      - name: vite and vscode
+        run: |
+          # Not -e: leakcheck exits 1 on a hit, which is a measurement here;
+          # exit 2 (an error) and a failed clone still stop the step.
+          set +e -u -o pipefail
+          o="$RUNNER_TEMP/large"; mkdir -p "$o"; bin="$RUNNER_TEMP/bin"
+          {
+            echo "image ${ImageOS:-unknown} ${ImageVersion:-unknown} arch $RUNNER_ARCH nproc $(nproc) mem $(free -m | awk '/^Mem:/{print $2}') MB"
+            for spec in "vite vitejs/vite 760a953fd4b4d1dd58b2652d5962af50a7510d5c" "vscode microsoft/vscode 36e8c0289a5f29eae15a933263220d9895302ff6"; do
+              set -- $spec; name=$1 repo=$2 sha=$3; t="$RUNNER_TEMP/trees/$name"
+              mkdir -p "$t" "$o/$name/before-in"
+              git -C "$t" init -q && git -C "$t" fetch -q --depth 1 "https://github.com/$repo" "$sha" && git -C "$t" checkout -q FETCH_HEAD || exit 1
+              echo "== $name $repo $sha"
+              /usr/bin/time -v "$bin/observe" scan -tree "$t" -run large-trees -repo "$repo" -commit "$sha" -out "$o/$name/payload.json" 2>"$o/$name/scan.err"
+              echo "scan exit $?: $(grep -v '^\s' "$o/$name/scan.err" | tail -1)"
+              cp "$o/$name/payload.json" "$o/$name/before-in/payload.json"
+              for side in before after; do
+                if [ "$side" = before ]; then in="$o/$name/before-in"; else in="$o/$name/payload.json"; fi
+                /usr/bin/time -v "$bin/leakcheck" -all-hidden -tree "$t" "$in" >"$o/$name/$side.out" 2>"$o/$name/$side.err"
+                rc=$?
+                [ "$rc" -le 1 ] || { echo "$name $side: leakcheck exit $rc"; sed 's/^/  /' "$o/$name/$side.err" | tail -5; exit 1; }
+                echo "$side exit $rc: $(grep 'hit line' "$o/$name/$side.err"); $(grep 'Elapsed (wall' "$o/$name/$side.err" | sed 's/.*: //') wall; $(grep 'Maximum resident' "$o/$name/$side.err" | awk '{print $NF}') KB max RSS"
+              done
+              rm -rf "$o/$name/before-in"
+            done
+          } | tee "$o/summary.txt"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: large-trees
+          path: ${{ runner.temp }}/large/
+          retention-days: 30
