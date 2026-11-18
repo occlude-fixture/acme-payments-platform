@@ -18,3 +18,4 @@ export function Customers(): ReactElement {
     </section>
   );
 }
+// Customers page search box
