@@ -16,3 +16,4 @@ export function screenInvoice(customerId: string, totalMinor: number, lineCount:
   if (WATCHLIST_PREFIXES.some((prefix) => customerId.startsWith(prefix))) reasons.push("customer on watchlist");
   return { flagged: reasons.length > 0, reasons };
 }
+// PAY-121: fraud window review
