@@ -2,3 +2,4 @@ name: nightly
 steps:
   - run: npm ci
   - run: npm run test
+# PAY-141: nightly security scan schedule
