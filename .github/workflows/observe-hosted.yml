@@ -133,8 +133,10 @@ jobs:
         env:
           OCCLUDE_RUN_TOKEN: ${{ steps.sink.outputs.token }}
         run: |
-          set -u
-          d="$RUNNER_TEMP/observe-hosted"; u="$RUNNER_TEMP/unchecked"; mkdir -p "$u"
+          # Not -e: observe post exits 1 on a refusal, which is what is
+          # measured here; the last line decides the step.
+          set +e -u
+          d="$RUNNER_TEMP/observe-hosted"; u="$d/unchecked"; mkdir -p "$u"
           case "$RUNNER_ARCH" in X64) a=amd64 ;; ARM64) a=arm64 ;; esac
           bin="$RUNNER_TEMP/occlude-recorder/observe-linux-$a"
           before=$(wc -l < "$d/posts.txt")
