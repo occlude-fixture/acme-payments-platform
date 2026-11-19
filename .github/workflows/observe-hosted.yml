@@ -2,6 +2,9 @@ name: observe-hosted
 # Runs the Observation recorder pre-release on GitHub-hosted runners: every
 # runner image and recorder pair, posting to a sink on the runner itself, and
 # the leak check on two large public trees. Started by hand only.
+# Each record job also shows, on the released binaries, that a payload
+# without a valid pass marker is not posted and that the Action refuses a run
+# token found in its scan step's environment.
 on:
   workflow_dispatch:
 permissions:
@@ -56,21 +59,28 @@ jobs:
           echo "strace $(strace -V | head -1)" | tee -a "$RUNNER_TEMP/observe-hosted/runner.txt"
 
       - name: Local payload sink (no Occlude address in this run)
+        id: sink
         run: |
           d="$RUNNER_TEMP/observe-hosted"
           # A run id shaped like Occlude's (a random UUID); the runner label
           # stays out of it, since this file is part of the checkout.
           echo "OBSERVE_RUN_ID=$(cat /proc/sys/kernel/random/uuid)" >> "$GITHUB_ENV"
+          # The token goes to the Action as its run-token input (a step output,
+          # masked) and to the sink as a 0600 file: never into GITHUB_ENV, which
+          # would put it in the Action's scan step.
           token=$(openssl rand -hex 24)
           echo "::add-mask::$token"
-          echo "OCCLUDE_RUN_TOKEN=$token" >> "$GITHUB_ENV"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+          (umask 077; printf '%s' "$token" > "$RUNNER_TEMP/sink-token")
           cat > "$d/sink.py" <<'PY'
           import http.server, os, sys
-          out = sys.argv[1]
-          want = "Bearer " + os.environ["OCCLUDE_RUN_TOKEN"]
+          out, tokfile = sys.argv[1], sys.argv[2]
+          want = "Bearer " + open(tokfile).read()
           class H(http.server.BaseHTTPRequestHandler):
               def do_POST(self):
                   body = self.rfile.read(int(self.headers.get("content-length", "0")))
+                  with open(os.path.join(out, "posts.txt"), "a") as f:
+                      f.write("post\n")
                   ok = self.headers.get("authorization") == want
                   with open(os.path.join(out, "posted.json"), "wb") as f:
                       f.write(body)
@@ -84,18 +94,19 @@ jobs:
                   pass
           http.server.HTTPServer(("127.0.0.1", 8787), H).serve_forever()
           PY
-          OCCLUDE_RUN_TOKEN="$token" nohup python3 "$d/sink.py" "$d" >"$d/sink.log" 2>&1 &
+          nohup python3 "$d/sink.py" "$d" "$RUNNER_TEMP/sink-token" >"$d/sink.log" 2>&1 &
           for i in 1 2 3 4 5 6 7 8 9 10; do
             curl -s -o /dev/null http://127.0.0.1:8787/ && break || sleep 1
           done
 
-      - name: Observation recorder v0.0.0-rc.1
+      - name: Observation recorder v0.0.0-rc.2
         id: observe
         continue-on-error: true
-        uses: occlude-dev/observe-action@53402444b7e3748836ebd64697b569244e2c4f56 # v0.0.0-rc.1
+        uses: occlude-dev/observe-action@09653b1fba11e4fe6d532c9a6546fd659a708b8c # v0.0.0-rc.2
         with:
           run-id: ${{ env.OBSERVE_RUN_ID }}
           cloud-url: http://127.0.0.1:8787
+          run-token: ${{ steps.sink.outputs.token }}
           recorder: ${{ matrix.recorder }}
 
       - name: Collect
@@ -107,10 +118,65 @@ jobs:
           echo "run id $OBSERVE_RUN_ID action $OUTCOME" | tee -a "$d/runner.txt"
           p="$RUNNER_TEMP/occlude-observe-payload.json"
           if [ -f "$p" ]; then cp "$p" "$d/payload.json"; else echo "payload none" | tee -a "$d/runner.txt"; fi
+          if [ -f "$p.leakcheck" ]; then cp "$p.leakcheck" "$d/payload.json.leakcheck"; echo "pass marker $(head -1 "$p.leakcheck"), digest $(sed -n 's/^sha256 //p' "$p.leakcheck")" | tee -a "$d/runner.txt"; else echo "pass marker none" | tee -a "$d/runner.txt"; fi
+          echo "posts after the Action $(wc -l < "$d/posts.txt" 2>/dev/null || echo 0)" | tee -a "$d/runner.txt"
           if [ -f "$d/posted.json" ] && [ -f "$d/payload.json" ]; then
             if cmp -s "$d/posted.json" "$d/payload.json"; then echo "posted equals the checked payload"; else echo "posted DIFFERS from the checked payload"; fi | tee -a "$d/runner.txt"
           fi
           [ ! -f "$d/posted.txt" ] || tee -a "$d/runner.txt" < "$d/posted.txt"
+
+      # RR41(a) on the released observe: a payload with no marker, and one
+      # changed after its check, are refused and nothing reaches the sink.
+      - name: Post unchecked payloads with the released observe (must be refused)
+        id: unchecked
+        if: always() && steps.observe.outcome == 'success'
+        env:
+          OCCLUDE_RUN_TOKEN: ${{ steps.sink.outputs.token }}
+        run: |
+          set -u
+          d="$RUNNER_TEMP/observe-hosted"; u="$RUNNER_TEMP/unchecked"; mkdir -p "$u"
+          case "$RUNNER_ARCH" in X64) a=amd64 ;; ARM64) a=arm64 ;; esac
+          bin="$RUNNER_TEMP/occlude-recorder/observe-linux-$a"
+          before=$(wc -l < "$d/posts.txt")
+          cp "$d/payload.json" "$u/no-marker.json"
+          cp "$d/payload.json" "$u/changed.json"; cp "$d/payload.json.leakcheck" "$u/changed.json.leakcheck"; printf ' ' >> "$u/changed.json"
+          refused=0
+          for f in no-marker changed; do
+            "$bin" post -in "$u/$f.json" -url http://127.0.0.1:8787 2>"$u/$f.err"; rc=$?
+            echo "unchecked $f: exit $rc: $(tail -1 "$u/$f.err")" | tee -a "$d/runner.txt"
+            [ "$rc" = 1 ] && grep -q 'nothing was posted' "$u/$f.err" && refused=$((refused+1))
+          done
+          after=$(wc -l < "$d/posts.txt")
+          echo "unchecked posts reaching the sink $((after-before))" | tee -a "$d/runner.txt"
+          test "$refused" = 2 && test "$after" = "$before"
+
+      - name: Clear the payload before the token-in-env run
+        if: always() && steps.observe.outcome == 'success'
+        run: rm -f "$RUNNER_TEMP/occlude-observe-payload.json" "$RUNNER_TEMP/occlude-observe-payload.json.leakcheck"
+
+      # RR41(b): a token in env reaches every step of the Action; the scan
+      # step must refuse it before running anything, and nothing is posted.
+      - name: Observation recorder with the token in env (must be refused)
+        id: tokenenv
+        if: always() && steps.observe.outcome == 'success'
+        continue-on-error: true
+        uses: occlude-dev/observe-action@09653b1fba11e4fe6d532c9a6546fd659a708b8c # v0.0.0-rc.2
+        env:
+          OCCLUDE_RUN_TOKEN: ${{ steps.sink.outputs.token }}
+        with:
+          run-id: ${{ env.OBSERVE_RUN_ID }}
+          cloud-url: http://127.0.0.1:8787
+          run-token: ${{ steps.sink.outputs.token }}
+          recorder: ${{ matrix.recorder }}
+
+      - name: Collect the refusals
+        if: always()
+        env:
+          OUTCOME: ${{ steps.tokenenv.outcome }}
+        run: |
+          d="$RUNNER_TEMP/observe-hosted"
+          echo "token in env: action $OUTCOME, payload $([ -f "$RUNNER_TEMP/occlude-observe-payload.json" ] && echo present || echo none)" | tee -a "$d/runner.txt"
+          echo "posts in total $(wc -l < "$d/posts.txt" 2>/dev/null || echo 0)" | tee -a "$d/runner.txt"
           rm -f "$d/sink.py"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -124,22 +190,28 @@ jobs:
         if: always()
         env:
           OUTCOME: ${{ steps.observe.outcome }}
-        run: test "$OUTCOME" = success
+          UNCHECKED: ${{ steps.unchecked.outcome }}
+          TOKENENV: ${{ steps.tokenenv.outcome }}
+        run: |
+          d="$RUNNER_TEMP/observe-hosted"
+          posts=$(wc -l < "$d/posts.txt" 2>/dev/null || echo 0)
+          echo "action $OUTCOME, unchecked refused $UNCHECKED, token-in-env run $TOKENENV, posts $posts"
+          test "$OUTCOME" = success && test "$UNCHECKED" = success && test "$TOKENENV" = failure && test "$posts" = 1
 
   large-trees:
     name: leak check on large trees, before and after per-value judging
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
-      - name: Fetch and verify observe and leakcheck (linux-amd64, v0.0.0-rc.1)
+      - name: Fetch and verify observe and leakcheck (linux-amd64, v0.0.0-rc.2)
         run: |
           d="$RUNNER_TEMP/bin"; mkdir -p "$d"
-          base=https://github.com/occlude-dev/observe-action/releases/download/v0.0.0-rc.1
+          base=https://github.com/occlude-dev/observe-action/releases/download/v0.0.0-rc.2
           curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$d/observe" "$base/observe-linux-amd64"
           curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$d/leakcheck" "$base/leakcheck-linux-amd64"
           printf '%s  %s\n' \
-            61c0b5b5aef7b8563c9c7d7e9165000d13734b25e9d54210684f86044ce926df "$d/observe" \
-            a2de88799e89bf132df3816cef9a36123afae0696936b0125fc4d0ebf084de71 "$d/leakcheck" | sha256sum -c -
+            50bf4d33b4e41c0583cbcc7a1e738ac5e9b0d3f9b2f826b3063d14759d213ca1 "$d/observe" \
+            6bb77cb313454b03dfdeea8fce2a432b6d7650b72aa85abd4836ff728f4a798d "$d/leakcheck" | sha256sum -c -
           chmod 0755 "$d/observe" "$d/leakcheck"
           command -v /usr/bin/time >/dev/null || sudo apt-get install -y time
 
@@ -161,14 +233,17 @@ jobs:
               git -C "$t" init -q && git -C "$t" fetch -q --depth 1 "https://github.com/$repo" "$sha" && git -C "$t" checkout -q FETCH_HEAD || exit 1
               echo "== $name $repo $sha"
               /usr/bin/time -v "$bin/observe" scan -tree "$t" -run large-trees -repo "$repo" -commit "$sha" -out "$o/$name/payload.json" 2>"$o/$name/scan.err"
-              echo "scan exit $?: $(grep -v '^\s' "$o/$name/scan.err" | tail -1)"
+              echo "scan exit $?"
               cp "$o/$name/payload.json" "$o/$name/before-in/payload.json"
               for side in before after; do
                 if [ "$side" = before ]; then in="$o/$name/before-in"; else in="$o/$name/payload.json"; fi
                 /usr/bin/time -v "$bin/leakcheck" -all-hidden -tree "$t" "$in" >"$o/$name/$side.out" 2>"$o/$name/$side.err"
                 rc=$?
                 [ "$rc" -le 1 ] || { echo "$name $side: leakcheck exit $rc"; sed 's/^/  /' "$o/$name/$side.err" | tail -5; exit 1; }
-                echo "$side exit $rc: $(grep 'hit line' "$o/$name/$side.err"); $(grep 'Elapsed (wall' "$o/$name/$side.err" | sed 's/.*: //') wall; $(grep 'Maximum resident' "$o/$name/$side.err" | awk '{print $NF}') KB max RSS"
+                # leakcheck prints its hits and its count on stdout (.out);
+                # /usr/bin/time writes to stderr (.err).
+                echo "$side exit $rc: $(grep 'hit line' "$o/$name/$side.out"); $(grep 'Elapsed (wall' "$o/$name/$side.err" | sed 's/.*: //') wall; $(grep 'Maximum resident' "$o/$name/$side.err" | awk '{print $NF}') KB max RSS"
+                [ "$side" = before ] || grep -v '^leakcheck: ' "$o/$name/$side.out" | sed 's/^/  hit /'
               done
               rm -rf "$o/$name/before-in"
             done
