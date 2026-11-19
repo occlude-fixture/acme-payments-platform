@@ -1,0 +1,21 @@
+name: Occlude Observation
+on:
+  workflow_dispatch:
+    inputs:
+      run-id:
+        description: The Observation run id
+        required: true
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      - run: npm ci
+      - uses: occlude-dev/observe-action@09653b1fba11e4fe6d532c9a6546fd659a708b8c   # v0.0.0-rc.2
+        with:
+          run-id: ${{ inputs.run-id }}
+          cloud-url: ${{ vars.OCCLUDE_CLOUD_URL }}
+          run-token: ${{ secrets.OCCLUDE_RUN_TOKEN }}
+          recorder: fanotify
